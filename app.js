@@ -2,7 +2,7 @@
 const firebaseConfig = {
   apiKey: "",
   authDomain: "",
-  databaseURL: ",
+  databaseURL: "",
   projectId: "",
   storageBucket: "",
   messagingSenderId: "",
@@ -10,71 +10,48 @@ const firebaseConfig = {
   measurementId: ""
 };
 
+
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
 
-
-async function registerUser(username, password) {
-    try {
-        const response = await fetch('http://localhost:5000/register', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ username, password })
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            console.log(data.message);
-        } else {
-            const error = await response.json();
-            throw new Error(error.error);
-        }
-    } catch (error) {
-        console.error("Registration failed: ", error.message);
-    }
-}
-
-async function getCustomToken(username, password) {
-    const response = await fetch('http://localhost:5000/get_custom_token', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ username, password })
+// Function to authenticate with the server and sign in with Firebase
+async function signInWithUsernameAndPassword(username, password) {
+  try {
+    // Send the username and password to your server to get a custom token
+    const response = await fetch('http://localhost:3000/authenticate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ username, password })
     });
 
+    const data = await response.json();
+
     if (response.ok) {
-        const data = await response.json();
-        return data.token;
+      // Sign in with the custom token
+      const userCredential = await auth.signInWithCustomToken(data.customToken);
+      const user = userCredential.user;
+      console.log('User signed in:', user);
     } else {
-        const error = await response.json();
-        throw new Error(error.error);
+      console.error('Error:', data.error);
     }
-}
-
-async function authenticate(username, password) {
-    try {
-        await registerUser(username, password); // Register the user first
-        const customToken = await getCustomToken(username, password);
-        await signInWithCustomToken(customToken);
-    } catch (error) {
-        console.error("Authentication failed: ", error.message);
-    }
-}
-
-async function signInWithCustomToken(customToken) {
-    try {
-        const userCredential = await firebase.auth().signInWithCustomToken(customToken);
-        console.log("User signed in: ", userCredential.user);
-        // You can now use the authenticated user information
-    } catch (error) {
-        console.error("Error signing in: ", error.code, error.message);
-    }
+  } catch (error) {
+    console.error('Error:', error);
+  }
 }
 
 // Example usage
-const username = "user1";
-const password = "password123";
-authenticate(username, password);
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('authForm');
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    const username = form.username.value;
+    const password = form.password.value;
+
+    signInWithUsernameAndPassword(username, password);
+  });
+});
